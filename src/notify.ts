@@ -24,21 +24,44 @@ export async function notify(config: NotifyConfig, state: KeeperRunState) {
 }
 
 function formatMessage(state: KeeperRunState) {
+  if (state.status === "success") {
+    return [
+      "<b>[MT-PT Keeper] KEEPALIVE OK</b>",
+      "",
+      `Result: ${escapeHtml(state.message)}`,
+      state.url ? `URL: ${escapeHtml(state.url)}` : undefined,
+      `Finished: ${escapeHtml(state.finishedAt)}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   const title =
-    state.status === "success"
-      ? "MT-PT Keeper succeeded"
-      : state.status === "expired"
-        ? "MT-PT session expired"
-        : "MT-PT Keeper failed";
+    state.status === "expired"
+      ? "[MT-PT Keeper] SESSION EXPIRED"
+      : "[MT-PT Keeper] KEEPALIVE FAILED";
 
   const lines = [
-    `${title}: ${state.message}`,
-    state.url ? `URL: ${state.url}` : undefined,
-    state.screenshotPath ? `Screenshot: ${state.screenshotPath}` : undefined,
-    "Action: run `pnpm init-session` and finish the captcha/login again.",
+    `<b>${title}</b>`,
+    "",
+    "<b>ACTION REQUIRED</b>",
+    "Run: <code>pnpm init-session</code>",
+    "Then finish the captcha/login in the opened browser.",
+    "",
+    `Reason: ${escapeHtml(state.message)}`,
+    state.url ? `URL: ${escapeHtml(state.url)}` : undefined,
+    state.screenshotPath ? `Screenshot: ${escapeHtml(state.screenshotPath)}` : undefined,
+    `Finished: ${escapeHtml(state.finishedAt)}`,
   ];
 
   return lines.filter(Boolean).join("\n");
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 async function sendWebhook(webhookUrl: string, text: string) {
@@ -60,6 +83,7 @@ async function sendTelegram(botToken: string, chatId: string, text: string) {
     body: JSON.stringify({
       chat_id: chatId,
       text,
+      parse_mode: "HTML",
       disable_web_page_preview: true,
     }),
   });
