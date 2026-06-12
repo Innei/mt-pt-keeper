@@ -23,7 +23,7 @@ It does not bypass captcha, solve anti-bot challenges, or store your tracker pas
 ```bash
 pnpm install
 pnpm exec playwright install chromium
-cp .env.example .env
+cp .env.template .env
 ```
 
 Edit `.env`:
