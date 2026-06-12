@@ -48,13 +48,18 @@ const MODAL_CLOSE_SELECTORS = [
   ".ant-modal-close",
   ".ant-modal-wrap .ant-modal-close",
   '.ant-modal-wrap button:has-text("关闭")',
+  '.ant-modal-wrap button:has-text("關閉")',
   '.ant-modal-wrap button:has-text("我知道了")',
   '.ant-modal-wrap button:has-text("知道了")',
   '.ant-modal-wrap button:has-text("确定")',
   '.ant-modal-wrap button:has-text("确认")',
+  '.ant-modal-wrap button:has-text("確定")',
+  '.ant-modal-wrap button:has-text("確認")',
   '.ant-modal-wrap button:has-text("OK")',
   '.ant-modal-wrap button:has-text("Close")',
   '.ant-modal-wrap [role="button"]:has-text("关闭")',
+  '.ant-modal-wrap [role="button"]:has-text("關閉")',
+  '.ant-modal-wrap [role="button"]:has-text("確認")',
   '.ant-modal-wrap [role="button"]:has-text("OK")',
 ];
 
