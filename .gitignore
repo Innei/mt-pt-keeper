@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+.keeper
+playwright-report
+test-results
+.DS_Store
