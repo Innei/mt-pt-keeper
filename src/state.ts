@@ -3,6 +3,12 @@ import path from "node:path";
 
 export type KeeperRunStatus = "success" | "expired" | "failed";
 
+export interface AccountStats {
+  downloaded?: string;
+  uploaded?: string;
+  ratio?: string;
+}
+
 export interface KeeperRunState {
   status: KeeperRunStatus;
   startedAt: string;
@@ -10,6 +16,7 @@ export interface KeeperRunState {
   url?: string;
   message: string;
   screenshotPath?: string;
+  accountStats?: AccountStats;
 }
 
 export async function writeRunState(stateFile: string, state: KeeperRunState) {

@@ -13,7 +13,8 @@ It does not bypass captcha, solve anti-bot challenges, or store your tracker pas
 - Daily cron keepalive with configurable timezone
 - Optional detail-page interaction for more realistic activity
 - Ant Design modal handling with click, DOM click, and direct navigation fallbacks
-- Telegram alerts when the saved session expires
+- Telegram alerts for every run, including successful keepalive runs
+- Successful Telegram alerts include current downloaded, uploaded, and ratio stats when available
 - Slack/Discord-compatible webhook support
 - Docker Compose and PM2 friendly
 - Debug logs for selectors, candidate detail links, modals, and navigation
@@ -114,7 +115,12 @@ Generic JSON webhook:
 KEEPER_WEBHOOK_URL=https://example.com/webhook
 ```
 
-Success notifications are disabled by default. Enable them with:
+Telegram sends success notifications whenever `TELEGRAM_BOT_TOKEN` and
+`TELEGRAM_CHAT_ID` are configured. Successful Telegram messages include the
+current downloaded, uploaded, and ratio stats when they are available on the
+page.
+
+Generic webhook success notifications are disabled by default. Enable them with:
 
 ```bash
 KEEPER_NOTIFY_SUCCESS=true
@@ -191,7 +197,7 @@ pnpm init-session
 | `MT_PT_EXPIRED_URL_PATTERN` | empty | Optional regex that marks session expired by URL. |
 | `MT_PT_SUCCESS_TEXT_PATTERN` | empty | Optional regex that marks session valid by page text. |
 | `MT_PT_EXPIRED_TEXT_PATTERN` | empty | Optional regex that marks session expired by page text. |
-| `KEEPER_NOTIFY_SUCCESS` | `false` | Send success notifications too. |
+| `KEEPER_NOTIFY_SUCCESS` | `false` | Send success notifications to the generic webhook too. Telegram success notifications are always sent when Telegram is configured. |
 | `KEEPER_WEBHOOK_URL` | empty | Optional Slack/Discord-compatible JSON webhook. |
 | `TELEGRAM_BOT_TOKEN` | empty | Telegram bot token for alerts. |
 | `TELEGRAM_CHAT_ID` | empty | Telegram chat id for alerts. |

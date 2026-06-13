@@ -5,6 +5,7 @@ import { notify } from "./notify.js";
 import {
   screenshotPathFor,
   timestampForFile,
+  type AccountStats,
   type KeeperRunState,
   writeRunState,
 } from "./state.js";
@@ -68,6 +69,7 @@ export interface KeeperRunResult {
   message: string;
   url?: string;
   screenshotPath?: string;
+  accountStats?: AccountStats;
 }
 
 class SessionExpiredError extends Error {
@@ -86,6 +88,7 @@ export async function runKeeper(config: KeeperConfig): Promise<KeeperRunResult> 
     context = await launchContext(config, config.headless);
     const page = context.pages()[0] ?? (await context.newPage());
     let interacted = false;
+    let accountStats: AccountStats | undefined;
 
     for (const url of config.keepaliveUrls) {
       logger.info({ url: redactUrl(url) }, "checking session");
@@ -105,6 +108,8 @@ export async function runKeeper(config: KeeperConfig): Promise<KeeperRunResult> 
         );
       }
 
+      accountStats = mergeAccountStats(accountStats, await extractAccountStats(page));
+
       if (config.interaction.enabled && !interacted) {
         interacted = await openOneDetailPage(page, config);
 
@@ -113,6 +118,8 @@ export async function runKeeper(config: KeeperConfig): Promise<KeeperRunResult> 
             "Session expired after opening a detail page.",
           );
         }
+
+        accountStats = mergeAccountStats(accountStats, await extractAccountStats(page));
       }
     }
 
@@ -124,6 +131,7 @@ export async function runKeeper(config: KeeperConfig): Promise<KeeperRunResult> 
           ? "Session keepalive completed successfully with detail interaction."
           : "Session keepalive completed successfully.",
         url: redactUrl(page.url()),
+        accountStats,
       },
       startedAtIso,
     );
@@ -178,12 +186,15 @@ export async function initializeSession(config: KeeperConfig): Promise<KeeperRun
       await waitForManualLogin(page, config);
     }
 
+    const accountStats = await extractAccountStats(page);
+
     return await persistResult(
       config,
       {
         status: "success",
         message: "Manual browser session initialized successfully.",
         url: redactUrl(page.url()),
+        accountStats,
       },
       startedAtIso,
     );
@@ -474,6 +485,65 @@ async function isLoggedIn(page: Page, config: KeeperConfig) {
   return hasAccountSignals || !looksLikeLoginPage;
 }
 
+async function extractAccountStats(page: Page): Promise<AccountStats | undefined> {
+  const rawText = await page
+    .evaluate(() => document.body?.textContent ?? "")
+    .catch(() => "");
+  const text = normalizeStatsText(rawText);
+  const stats: AccountStats = {
+    downloaded: findTrafficStat(text, ["下[载載]量", "downloaded?", "download"]),
+    uploaded: findTrafficStat(text, ["上[传傳]量", "uploaded?", "upload"]),
+    ratio: findRatioStat(text),
+  };
+
+  if (!stats.downloaded && !stats.uploaded && !stats.ratio) {
+    logger.debug("account stats not found on current page");
+    return undefined;
+  }
+
+  logger.info({ accountStats: stats }, "account stats captured");
+  return stats;
+}
+
+function mergeAccountStats(
+  current: AccountStats | undefined,
+  next: AccountStats | undefined,
+): AccountStats | undefined {
+  if (!current) return next;
+  if (!next) return current;
+
+  return {
+    downloaded: next.downloaded ?? current.downloaded,
+    uploaded: next.uploaded ?? current.uploaded,
+    ratio: next.ratio ?? current.ratio,
+  };
+}
+
+function findTrafficStat(text: string, labels: string[]) {
+  const trafficValue = String.raw`([0-9]+(?:\.[0-9]+)?\s*(?:[KMGTPEZY]i?B|[KMGTPEZY]?B))`;
+  const pattern = new RegExp(
+    String.raw`(?:${labels.join("|")})\s*(?:\[[^\]]+\])?\s*[:：]?\s*${trafficValue}`,
+    "i",
+  );
+  const value = pattern.exec(text)?.[1];
+  return value ? normalizeStatValue(value) : undefined;
+}
+
+function findRatioStat(text: string) {
+  const pattern =
+    /(?:分享率|分享比率|share\s*ratio|ratio)\s*[:：]?\s*(∞|inf(?:inity)?|[0-9]+(?:\.[0-9]+)?)/i;
+  const value = pattern.exec(text)?.[1];
+  return value ? normalizeStatValue(value) : undefined;
+}
+
+function normalizeStatsText(text: string) {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function normalizeStatValue(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 async function firstVisible(page: Page, selectors: Array<string | undefined>): Promise<Locator | undefined> {
   for (const selector of selectors) {
     if (!selector) continue;
@@ -518,6 +588,7 @@ async function persistResult(
     url: result.url,
     message: result.message,
     screenshotPath: result.screenshotPath,
+    accountStats: result.accountStats,
   };
 
   await writeRunState(config.stateFile, state);
